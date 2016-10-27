@@ -35,7 +35,7 @@ called ``flask_something`` users would import it as
 ``flask.ext.something``.  This is done to transition from the old
 namespace packages.  See :ref:`ext-import-transition` for more details.
 
-But how do extensions look like themselves?  An extension has to ensure
+But what do extensions look like themselves?  An extension has to ensure
 that it works with multiple Flask application instances at once.  This is
 a requirement because many people will use patterns like the
 :ref:`app-factories` pattern to create their application as needed to aid
@@ -408,8 +408,8 @@ Flask 0.8 introduced a redirect import system as a compatibility aid for app
 developers: Importing ``flask.ext.foo`` would try ``flask_foo`` and
 ``flaskext.foo`` in that order.
 
-As of Flask 1.0, most Flask extensions have transitioned to the new naming
-schema. The ``flask.ext.foo`` compatibility alias is still in Flask 1.0 but is
+As of Flask 0.11, most Flask extensions have transitioned to the new naming
+schema. The ``flask.ext.foo`` compatibility alias is still in Flask 0.11 but is
 now deprecated -- you should use ``flask_foo``.
 
 

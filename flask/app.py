@@ -22,7 +22,8 @@ from werkzeug.exceptions import HTTPException, InternalServerError, \
      MethodNotAllowed, BadRequest, default_exceptions
 
 from .helpers import _PackageBoundObject, url_for, get_flashed_messages, \
-     locked_cached_property, _endpoint_from_view_func, find_package
+     locked_cached_property, _endpoint_from_view_func, find_package, \
+     get_debug_flag
 from . import json, cli
 from .wrappers import Request, Response
 from .config import ConfigAttribute, Config
@@ -120,7 +121,7 @@ class Flask(_PackageBoundObject):
        The `instance_path` and `instance_relative_config` parameters were
        added.
 
-    .. versionadded:: 1.0
+    .. versionadded:: 0.11
        The `root_path` parameter was added.
 
     :param import_name: the name of the application package
@@ -159,7 +160,7 @@ class Flask(_PackageBoundObject):
 
     #: The class that is used for the Jinja environment.
     #:
-    #: .. versionadded:: 1.0
+    #: .. versionadded:: 0.11
     jinja_environment = Environment
 
     #: The class that is used for the :data:`~flask.g` instance.
@@ -198,7 +199,7 @@ class Flask(_PackageBoundObject):
     #: 1. Default values for certain config options.
     #: 2. Access to config values through attributes in addition to keys.
     #:
-    #: .. versionadded:: 1.0
+    #: .. versionadded:: 0.11
     config_class = Config
 
     #: The debug flag.  Set this to ``True`` to enable debugging of the
@@ -289,7 +290,7 @@ class Flask(_PackageBoundObject):
 
     #: Default configuration parameters.
     default_config = ImmutableDict({
-        'DEBUG':                                False,
+        'DEBUG':                                get_debug_flag(default=False),
         'TESTING':                              False,
         'PROPAGATE_EXCEPTIONS':                 None,
         'PRESERVE_CONTEXT_ON_EXCEPTION':        None,
@@ -481,7 +482,7 @@ class Flask(_PackageBoundObject):
         #: A list of shell context processor functions that should be run
         #: when a shell context is created.
         #:
-        #: .. versionadded:: 1.0
+        #: .. versionadded:: 0.11
         self.shell_context_processors = []
 
         #: all the attached blueprints in a dictionary by name.  Blueprints
@@ -518,7 +519,7 @@ class Flask(_PackageBoundObject):
         #:        def to_python(self, value):
         #:            return value.split(',')
         #:        def to_url(self, values):
-        #:            return ','.join(BaseConverter.to_url(value)
+        #:            return ','.join(super(ListConverter, self).to_url(value)
         #:                            for value in values)
         #:
         #:    app = Flask(__name__)
@@ -546,7 +547,7 @@ class Flask(_PackageBoundObject):
         #: provided by Flask itself and can be overridden.
         #:
         #: This is an instance of a :class:`click.Group` object.
-        self.cli = cli.AppGroup(self)
+        self.cli = cli.AppGroup(self.name)
 
     def _get_error_handlers(self):
         from warnings import warn
@@ -683,7 +684,7 @@ class Flask(_PackageBoundObject):
         this function to customize the behavior.
 
         .. versionadded:: 0.5
-        .. versionchanged:: 1.0
+        .. versionchanged:: 0.11
            ``Environment.auto_reload`` set in accordance with
            ``TEMPLATES_AUTO_RELOAD`` configuration option.
         """
@@ -772,7 +773,7 @@ class Flask(_PackageBoundObject):
         application.  This runs all the registered shell context
         processors.
 
-        .. versionadded:: 1.0
+        .. versionadded:: 0.11
         """
         rv = {'app': self, 'g': g}
         for processor in self.shell_context_processors:
@@ -837,12 +838,11 @@ class Flask(_PackageBoundObject):
             self.debug = bool(debug)
         options.setdefault('use_reloader', self.debug)
         options.setdefault('use_debugger', self.debug)
-        options.setdefault('passthrough_errors', True)
         try:
             run_simple(host, port, self, **options)
         finally:
             # reset the first request information if the development server
-            # resetted normally.  This makes it possible to restart the server
+            # reset normally.  This makes it possible to restart the server
             # without reloader and that stuff from an interactive shell.
             self._got_first_request = False
 
@@ -876,9 +876,9 @@ class Flask(_PackageBoundObject):
             from flask.testing import FlaskClient
 
             class CustomClient(FlaskClient):
-                def __init__(self, authentication=None, *args, **kwargs):
-                    FlaskClient.__init__(*args, **kwargs)
-                    self._authentication = authentication
+                def __init__(self, *args, **kwargs):
+                    self._authentication = kwargs.pop("authentication")
+                    super(CustomClient,self).__init__( *args, **kwargs)
 
             app.test_client_class = CustomClient
             client = app.test_client(authentication='Basic ....')
@@ -893,7 +893,7 @@ class Flask(_PackageBoundObject):
            to override the client to be used by setting the
            :attr:`test_client_class` attribute.
 
-        .. versionchanged:: 1.0
+        .. versionchanged:: 0.11
            Added `**kwargs` to support passing additional keyword arguments to
            the constructor of :attr:`test_client_class`.
         """
@@ -954,7 +954,7 @@ class Flask(_PackageBoundObject):
     def iter_blueprints(self):
         """Iterates over all blueprints by the order they were registered.
 
-        .. versionadded:: 1.0
+        .. versionadded:: 0.11
         """
         return iter(self._blueprint_order)
 
@@ -1115,7 +1115,7 @@ class Flask(_PackageBoundObject):
 
     @setupmethod
     def errorhandler(self, code_or_exception):
-        """A decorator that is used to register a function give a given
+        """A decorator that is used to register a function given an
         error code.  Example::
 
             @app.errorhandler(404)
@@ -1403,7 +1403,7 @@ class Flask(_PackageBoundObject):
     def shell_context_processor(self, f):
         """Registers a shell context processor function.
 
-        .. versionadded:: 1.0
+        .. versionadded:: 0.11
         """
         self.shell_context_processors.append(f)
         return f
@@ -1555,7 +1555,7 @@ class Flask(_PackageBoundObject):
         self.log_exception((exc_type, exc_value, tb))
         if handler is None:
             return InternalServerError()
-        return handler(e)
+        return self.finalize_request(handler(e), from_error_handler=True)
 
     def log_exception(self, exc_info):
         """Logs an exception.  This is called by :meth:`handle_exception`
@@ -1623,9 +1623,30 @@ class Flask(_PackageBoundObject):
                 rv = self.dispatch_request()
         except Exception as e:
             rv = self.handle_user_exception(e)
+        return self.finalize_request(rv)
+
+    def finalize_request(self, rv, from_error_handler=False):
+        """Given the return value from a view function this finalizes
+        the request by converting it into a response and invoking the
+        postprocessing functions.  This is invoked for both normal
+        request dispatching as well as error handlers.
+
+        Because this means that it might be called as a result of a
+        failure a special safe mode is available which can be enabled
+        with the `from_error_handler` flag.  If enabled, failures in
+        response processing will be logged and otherwise ignored.
+
+        :internal:
+        """
         response = self.make_response(rv)
-        response = self.process_response(response)
-        request_finished.send(self, response=response)
+        try:
+            response = self.process_response(response)
+            request_finished.send(self, response=response)
+        except Exception:
+            if not from_error_handler:
+                raise
+            self.logger.exception('Request finalizing failed with an '
+                                  'error while handling an error')
         return response
 
     def try_trigger_before_first_request_functions(self):
@@ -1803,7 +1824,7 @@ class Flask(_PackageBoundObject):
         if it was the return value from the view and further
         request handling is stopped.
 
-        This also triggers the :meth:`url_value_processor` functions before
+        This also triggers the :meth:`url_value_preprocessor` functions before
         the actual :meth:`before_request` functions are called.
         """
         bp = _request_ctx_stack.top.request.blueprint
@@ -1972,7 +1993,7 @@ class Flask(_PackageBoundObject):
                 response = self.full_dispatch_request()
             except Exception as e:
                 error = e
-                response = self.make_response(self.handle_exception(e))
+                response = self.handle_exception(e)
             return response(environ, start_response)
         finally:
             if self.should_ignore_error(error):

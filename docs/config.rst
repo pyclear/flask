@@ -177,7 +177,7 @@ The following configuration values are used internally by Flask:
                                   behavior by changing this variable.
                                   This is not recommended but might give
                                   you a performance improvement on the
-                                  cost of cachability.
+                                  cost of cacheability.
 ``JSONIFY_PRETTYPRINT_REGULAR``   If this is set to ``True`` (the default)
                                   jsonify responses will be pretty printed
                                   if they are not requested by an
@@ -241,7 +241,7 @@ The following configuration values are used internally by Flask:
 .. versionadded:: 0.10
    ``JSON_AS_ASCII``, ``JSON_SORT_KEYS``, ``JSONIFY_PRETTYPRINT_REGULAR``
 
-.. versionadded:: 1.0
+.. versionadded:: 0.11
    ``SESSION_REFRESH_EACH_REQUEST``, ``TEMPLATES_AUTO_RELOAD``,
    ``LOGGER_HANDLER_POLICY``, ``EXPLAIN_TEMPLATE_LOADING``
 
@@ -310,6 +310,7 @@ that experience:
     limit yourself to request-only accesses to the configuration you can
     reconfigure the object later on as needed.
 
+.. _config-dev-prod:
 
 Development / Production
 ------------------------
